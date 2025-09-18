@@ -101,7 +101,7 @@
           </div>
         </div>
         
-        <!-- Bulk Layer Converter -->
+        <!-- Bulk Layer Converter
         <div class="col-md-6 col-lg-4">
           <div class="card tool-card">
             <div class="card-icon">
@@ -113,7 +113,7 @@
               <a href="{% url 'layer_converter' %}" target="_blank" class="btn btn-outline-primary">Use Tool</a>
             </div>
           </div>
-        </div>
+        </div> -->
         
         <!-- Map Generator -->
         <div class="col-md-6 col-lg-4">
@@ -177,46 +177,51 @@
         </div>
         <!-- Right column (chart) -->
         <div class="col-lg-6 order-lg-1 mt-5 mt-lg-0">
-          <div class="chart-container" style="height: 500px;">
+        <div class="chart-container" style="height: 500px;">
             <h4 class="text-center mb-4">Visitors by Country</h4>
             <canvas id="countryChart" style="height: 300px;"></canvas>
-          </div>
         </div>
-      </div>
-    </div>
-  </section>
+        </div>
+        </div>
+        </div>
+        </section>
 
-  <!-- Country Selection Modal -->
-  <div class="modal fade" id="countryModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Welcome!</h5>
+        <!-- Country Selection Modal -->
+        <div class="modal fade" id="countryModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Welcome!</h5>
+            </div>
+            <div class="modal-body">
+                <p>Please select your region</p>
+                <select id="countrySelect" class="form-select mb-3">
+                <option value="">Select your country</option>
+                <option value="Pakistan">Pakistan</option>
+                <option value="India">India</option>
+                <option value="Bangladesh">Bangladesh</option>
+                <option value="USA">USA</option>
+                <option value="Europe">Europe</option>
+                <option value="Middle East">Middle East</option>
+                <option value="South Asia">South Asia</option>
+                <option value="Africa">Africa</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button id="submitCountry" class="btn btn-primary">Submit</button>
+            </div>
+            </div>
         </div>
-        <div class="modal-body">
-          <p>Please select your country to help us improve our services</p>
-          <select id="countrySelect" class="form-select mb-3">
-            <option value="">Select your country</option>
-            {% for code, name in all_countries %}
-            <option value="{{ name }}">{{ name }}</option>
-            {% endfor %}
-          </select>
         </div>
-        <div class="modal-footer">
-          <button id="submitCountry" class="btn btn-primary">Submit</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- CTA Section -->
-  <section class="cta-section">
+<!-- CTA Section -->
+<section class="cta-section">
     <div class="container">
-      <div class="cta-box">
+    <div class="cta-box">
         <h2>Ready to Transform Your Geospatial Workflow?</h2>
         <p>Join thousands of GIS professionals and students using our free tools daily</p>
         <a href="#tools" class="btn btn-light">Get Started Now</a>
-      </div>
+    </div>
     </div>
   </section>
 
@@ -298,187 +303,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Enhanced chart configuration
-  const chartData = JSON.parse('{{ chart_data|escapejs }}');
-  const ctx = document.getElementById('countryChart').getContext('2d');
-  
-  // Gradient background for bars
-  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-  gradient.addColorStop(0, 'rgba(58, 123, 213, 0.8)');
-  gradient.addColorStop(1, 'rgba(0, 210, 255, 0.3)');
-
-  const chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: chartData.labels,
-      datasets: [{
-        label: 'Visitors by Country',
-        data: chartData.data,
-        backgroundColor: gradient,
-        borderColor: 'rgba(58, 123, 213, 1)',
-        borderWidth: 2,
-        borderRadius: 6,
-        borderSkipped: false,
-        hoverBackgroundColor: 'rgba(255, 99, 132, 0.8)',
-        hoverBorderColor: 'rgba(255, 99, 132, 1)'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        duration: 1500,
-        easing: 'easeOutQuart'
-      },
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          titleFont: {
-            size: 14,
-            weight: 'bold'
-          },
-          bodyFont: {
-            size: 12
-          },
-          padding: 12,
-          cornerRadius: 4,
-          displayColors: false,
-          callbacks: {
-            label: function(context) {
-              return `${context.parsed.y} visitor${context.parsed.y !== 1 ? 's' : ''}`;
-            }
-          }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: {
-            color: 'rgba(0, 0, 0, 0.05)',
-            drawBorder: false
-          },
-          ticks: {
-            stepSize: 1,
-            font: {
-              weight: 'bold'
-            }
-          }
-        },
-        x: {
-          grid: {
-            display: false,
-            drawBorder: false
-          },
-          ticks: {
-            font: {
-              weight: 'bold'
-            }
-          }
-        }
-      },
-      layout: {
-        padding: {
-          top: 10,
-          right: 10,
-          bottom: 10,
-          left: 10
-        }
-      }
-    }
-  });
-
-  // Enhanced modal with animations
-  if (!localStorage.getItem('countrySelected')) {
-    const modal = new bootstrap.Modal(document.getElementById('countryModal'), {
-      backdrop: 'static',
-      keyboard: false
-    });
-    
-    // Add animation to modal
-    document.getElementById('countryModal').addEventListener('shown.bs.modal', function () {
-      this.querySelector('.modal-content').classList.add('animate__animated', 'animate__zoomIn');
-    });
-    
-    modal.show();
-    
-    document.getElementById('submitCountry').addEventListener('click', function() {
-      const country = document.getElementById('countrySelect').value;
-      if (country) {
-        // Add loading state
-        const btn = this;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-        btn.disabled = true;
-        
-        // Send data via AJAX
-        fetch(window.location.href, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': '{{ csrf_token }}'
-          },
-          body: `country=${encodeURIComponent(country)}`
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            localStorage.setItem('countrySelected', 'true');
-            
-            // Add success animation to modal
-            const modalContent = document.querySelector('#countryModal .modal-content');
-            modalContent.classList.remove('animate__zoomIn');
-            modalContent.classList.add('animate__animated', 'animate__zoomOut');
-            
-            setTimeout(() => {
-              modal.hide();
-              
-              // Update chart with animation
-              fetch('/get-country-stats/')
-                .then(response => response.json())
-                .then(data => {
-                  // Animate chart update
-                  chart.data.labels = data.labels;
-                  chart.data.datasets[0].data = data.data;
-                  
-                  // Add celebration effect
-                  if (data.data.some(count => count > chartData.data[0])) {
-                    const confettiSettings = {
-                      target: 'countryChart',
-                      max: 100,
-                      size: 1.5,
-                      animate: true,
-                      props: ['circle', 'square', 'triangle', 'line'],
-                      colors: [[58, 123, 213], [0, 210, 255], [255, 99, 132]],
-                      clock: 25
-                    };
-                    const confetti = new ConfettiGenerator(confettiSettings);
-                    confetti.render();
-                    
-                    setTimeout(() => {
-                      confetti.clear();
-                    }, 3000);
-                  }
-                  
-                  chart.update();
-                });
-            }, 500);
-          }
-        })
-        .finally(() => {
-          btn.innerHTML = 'Submit';
-          btn.disabled = false;
-        });
-      }
-    });
-  }
-});
-</script>
-
+  <script src="js\main.js"></script>
+ 
 <!-- Add these to your head section or before the script -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/confetti-js@0.0.18/dist/index.min.js"></script>
