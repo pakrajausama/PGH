@@ -68,3 +68,95 @@ document.addEventListener('DOMContentLoaded', function () {
     })
   }
 })
+
+
+// page animations
+
+
+ document.addEventListener('DOMContentLoaded', function() {
+      // Elements to animate
+      const fadeElements = document.querySelectorAll('.fade-in');
+      const slideLeftElements = document.querySelectorAll('.slide-in-left');
+      const slideRightElements = document.querySelectorAll('.slide-in-right');
+      const scaleElements = document.querySelectorAll('.scale-in');
+      const staggeredElements = document.querySelectorAll('.staggered-item');
+      
+      // Progress bar
+      const progressBar = document.getElementById('progressBar');
+      
+      // Check if element is in viewport
+      function isInViewport(element) {
+        const rect = element.getBoundingClientRect();
+        return (
+          rect.top <= (window.innerHeight || document.documentElement.clientHeight) * 0.85 &&
+          rect.bottom >= 0
+        );
+      }
+      
+      // Add visible class to elements in viewport
+      function checkScroll() {
+        // Progress bar calculation
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight - windowHeight;
+        const scrolled = (window.scrollY / documentHeight) * 100;
+        progressBar.style.width = scrolled + '%';
+        
+        // Animation triggers
+        fadeElements.forEach(element => {
+          if (isInViewport(element)) {
+            element.classList.add('visible');
+          }
+        });
+        
+        slideLeftElements.forEach(element => {
+          if (isInViewport(element)) {
+            element.classList.add('visible');
+          }
+        });
+        
+        slideRightElements.forEach(element => {
+          if (isInViewport(element)) {
+            element.classList.add('visible');
+          }
+        });
+        
+        scaleElements.forEach(element => {
+          if (isInViewport(element)) {
+            element.classList.add('visible');
+          }
+        });
+        
+        // Staggered animation with delay
+        staggeredElements.forEach((element, index) => {
+          if (isInViewport(element)) {
+            setTimeout(() => {
+              element.classList.add('visible');
+            }, index * 150); // 150ms delay between each item
+          }
+        });
+      }
+      
+      // Initial check on page load
+      checkScroll();
+      
+      // Check on scroll
+      window.addEventListener('scroll', checkScroll);
+      
+      // Add smooth scroll to all links
+      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          const targetId = this.getAttribute('href');
+          if (targetId === '#') return;
+          
+          const targetElement = document.querySelector(targetId);
+          if (targetElement) {
+            window.scrollTo({
+              top: targetElement.offsetTop - 80, // Adjust for fixed header
+              behavior: 'smooth'
+            });
+          }
+        });
+      });
+    });
