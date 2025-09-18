@@ -5,6 +5,16 @@ const SUPABASE_URL = 'https://mlnqzxfcgchxocwwjvjz.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sbnF6eGZjZ2NoeG9jd3dqdmp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMDYxNTMsImV4cCI6MjA3Mzc4MjE1M30.MRzFmpfz0pCKAbiBvC0QSQAYcp0rtq_UKhP68XQCTjc'
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
+// Helper to safely update visitor count element
+function setVisitorCount(count) {
+  const el = document.getElementById('visitorCount')
+  if (el) {
+    el.textContent = count
+  } else {
+    console.warn('visitorCount element not found in DOM')
+  }
+}
+
 // Insert visitor + update count
 async function updateVisitorCount(country) {
   const { error: insertError } = await supabase.from('visitors').insert([{ country }])
@@ -22,7 +32,7 @@ async function updateVisitorCount(country) {
     return
   }
 
-  document.getElementById('visitorCount').textContent = count
+  setVisitorCount(count)
 }
 
 // Fetch only visitor count
@@ -36,7 +46,7 @@ async function fetchVisitorCount() {
     return
   }
 
-  document.getElementById('visitorCount').textContent = count
+  setVisitorCount(count)
 }
 
 document.addEventListener('DOMContentLoaded', function () {
