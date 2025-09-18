@@ -1,67 +1,60 @@
+import { createClient } from '@supabase/supabase-js'
 
-document.addEventListener('DOMContentLoaded', function() {
-  // Load stored data (or empty object)
-  let countryStats = JSON.parse(localStorage.getItem('countryStats')) || {};
+// Supabase setup
+const SUPABASE_URL = 'https://mlnqzxfcgchxocwwjvjz.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sbnF6eGZjZ2NoeG9jd3dqdmp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMDYxNTMsImV4cCI6MjA3Mzc4MjE1M30.MRzFmpfz0pCKAbiBvC0QSQAYcp0rtq_UKhP68XQCTjc'
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-  // Chart setup
-  const ctx = document.getElementById('countryChart').getContext('2d');
-  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-  gradient.addColorStop(0, 'rgba(58, 123, 213, 0.8)');
-  gradient.addColorStop(1, 'rgba(0, 210, 255, 0.3)');
+// Insert visitor + update count
+async function updateVisitorCount(country) {
+  const { error: insertError } = await supabase.from('visitors').insert([{ country }])
+  if (insertError) {
+    console.error('Insert failed:', insertError)
+    return
+  }
 
-  const chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: Object.keys(countryStats),
-      datasets: [{
-        label: 'Visitors by Country',
-        data: Object.values(countryStats),
-        backgroundColor: gradient,
-        borderColor: 'rgba(58, 123, 213, 1)',
-        borderWidth: 2,
-        borderRadius: 6,
-        borderSkipped: false,
-        hoverBackgroundColor: 'rgba(255, 99, 132, 0.8)',
-        hoverBorderColor: 'rgba(255, 99, 132, 1)'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, ticks: { stepSize: 1, font: { weight: 'bold' } } },
-        x: { ticks: { font: { weight: 'bold' } } }
-      }
-    }
-  });
+  const { count, error } = await supabase
+    .from('visitors')
+    .select('*', { count: 'exact', head: true })
 
-  // Show modal if not already selected
+  if (error) {
+    console.error('Count failed:', error)
+    return
+  }
+
+  document.getElementById('visitorCount').textContent = count
+}
+
+// Fetch only visitor count
+async function fetchVisitorCount() {
+  const { count, error } = await supabase
+    .from('visitors')
+    .select('*', { count: 'exact', head: true })
+
+  if (error) {
+    console.error('Count failed:', error)
+    return
+  }
+
+  document.getElementById('visitorCount').textContent = count
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  fetchVisitorCount()
+
   if (!localStorage.getItem('countrySelected')) {
     const modal = new bootstrap.Modal(document.getElementById('countryModal'), {
       backdrop: 'static',
-      keyboard: false
-    });
-    modal.show();
+      keyboard: false,
+    })
+    modal.show()
 
-    document.getElementById('submitCountry').addEventListener('click', function() {
-      const country = document.getElementById('countrySelect').value;
-      if (country) {
-        // Save selection
-        localStorage.setItem('countrySelected', country);
-
-        // Update stats
-        countryStats[country] = (countryStats[country] || 0) + 1;
-        localStorage.setItem('countryStats', JSON.stringify(countryStats));
-
-        // Update chart
-        chart.data.labels = Object.keys(countryStats);
-        chart.data.datasets[0].data = Object.values(countryStats);
-        chart.update();
-
-        modal.hide();
-      }
-    });
+    document.getElementById('submitCountry').addEventListener('click', async function () {
+      const country = document.getElementById('countrySelect').value
+      if (!country) return alert('Please select a country!')
+      localStorage.setItem('countrySelected', country)
+      await updateVisitorCount(country)
+      modal.hide()
+    })
   }
-});
-
+})
