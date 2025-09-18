@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Geo-Img → KMZ Converter</title>
+  <link rel="stylesheet" href="css\geotagged.css">
+</head>
+<body>
+  <div class="container">
+    <h1>📍 Geo-Img → KMZ Converter</h1>
+    <p>Convert geotagged images into a KMZ file for Google Earth & GIS apps.</p>
+
+    <div class="upload-box">
+        <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png">
+        <button id="processBtn">🚀 Generate KMZ</button>
+    </div>
+
+    <div id="status"></div>
+    <a id="downloadLink" style="display:none;">⬇️ Download KMZ</a>
+    </div>
+
+    <!-- Right panel -->
+    <div id="sidePanel">
+    <h2>⚠️ Skipped Files</h2>
+    <ul id="skippedList"></ul>
+    </div>
+
+  <!-- Libs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+  <!-- Main Tool -->
+  <script src="js/kmz-tool.js"></script>
+</body>
+</html>
