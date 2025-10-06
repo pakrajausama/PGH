@@ -8,37 +8,50 @@ try {
   WebpackObfuscator = null;
 }
 
-module.exports = {
-  entry: {
-    main: './src/js/main.js',
-    kmz: './src/js/kmz-tool.js'
-  },
-  output: {
-    filename: '[name].bundle.js', // will create main.bundle.js and kmz.bundle.js
-    path: path.resolve(__dirname, 'dist'),
-    clean: true, // clean old builds
-  },
-  mode: 'production',
-  module: {
-    rules: [
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-env'],
+module.exports = (env, argv) => {
+  const isDev = argv.mode === 'development';
+
+  return {
+    entry: {
+      main: './src/js/main.js',
+      kmz: './src/js/kmz-tool.js',
+    },
+    output: {
+      filename: '[name].bundle.js',
+      path: path.resolve(__dirname, 'dist'),
+      clean: true,
+      publicPath: isDev ? '/' : 'dist/', // ✅ key difference
+    },
+    mode: isDev ? 'development' : 'production',
+    module: {
+      rules: [
+        {
+          test: /\.js$/,
+          exclude: /node_modules/,
+          use: {
+            loader: 'babel-loader',
+            options: { presets: ['@babel/preset-env'] },
           },
         },
+      ],
+    },
+    optimization: {
+      minimize: !isDev,
+      minimizer: [new TerserPlugin()],
+    },
+    plugins: WebpackObfuscator
+      ? [new WebpackObfuscator({ rotateStringArray: true }, [])]
+      : [],
+    devtool: isDev ? 'source-map' : false,
+    devServer: {
+      static: {
+        directory: path.join(__dirname),
       },
-    ],
-  },
-  optimization: {
-    minimize: true,
-    minimizer: [new TerserPlugin()],
-  },
-  plugins: WebpackObfuscator
-    ? [new WebpackObfuscator({ rotateStringArray: true }, [])]
-    : [],
-  devtool: 'source-map', // optional: helps debug minified code
+      port: 8080,
+      open: true,
+      headers: {
+        'Content-Security-Policy': "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;",
+      },
+    },
+  };
 };
