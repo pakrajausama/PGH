@@ -1,3 +1,4 @@
+// ===================== DOM =====================
 const fileInput = document.getElementById("fileInput");
 const convertBtn = document.getElementById("convertBtn");
 const progressBox = document.getElementById("progressBox");
@@ -7,84 +8,15 @@ const nonGeoList = document.getElementById("nonGeoList");
 const geoPreview = document.getElementById("geoPreview");
 const geojsonBtn = document.getElementById("geojsonBtn");
 
+// ===================== GLOBALS =====================
 let zip;
 let geojson;
 let nonGeotagged = [];
 
-convertBtn.onclick = async () => {
-    const files = fileInput.files;
-    if (!files.length) return alert("Select images first");
+// ===================== UTILS =====================
+const sleep = (ms = 0) => new Promise(r => setTimeout(r, ms));
 
-    zip = new JSZip();
-    nonGeotagged = [];
-
-    geojson = {
-        type: "FeatureCollection",
-        features: []
-    };
-
-    progressBox.classList.remove("d-none");
-    downloadBtn.classList.add("d-none");
-
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        // ---- Read EXIF ----
-        let tags = {};
-        try {
-            tags = await ExifReader.load(file);
-        } catch {}
-
-        const hasGPS = tags.GPSLatitude && tags.GPSLongitude;
-
-        if (hasGPS) {
-            const lat = tags.GPSLatitude.description;
-            const lon = tags.GPSLongitude.description;
-            const alt = tags.GPSAltitude ? tags.GPSAltitude.description : null;
-
-            geojson.features.push({
-                type: "Feature",
-                geometry: {
-                    type: "Point",
-                    coordinates: [lon, lat]
-                },
-                properties: {
-                    image: file.name.replace(/\.\w+$/, ".webp"),
-                    latitude: lat,
-                    longitude: lon,
-                    altitude: alt
-                }
-            });
-        } else {
-            nonGeotagged.push(file.name);
-        }
-
-        // ---- Convert to WebP ----
-        const webp = await toWebP(file);
-        zip.file(file.name.replace(/\.\w+$/, ".webp"), webp);
-
-        const p = Math.round(((i + 1) / files.length) * 100);
-        progressBar.style.width = p + "%";
-        progressBar.innerText = p + "%";
-    }
-
-    geoPreview.textContent = JSON.stringify(geojson, null, 2);
-    downloadBtn.classList.remove("d-none");
-    geojsonBtn.classList.remove("d-none");
-
-    // ---- Add side files ----
-    zip.file("images.geojson", JSON.stringify(geojson, null, 2));
-    zip.file("non_geotagged.txt", nonGeotagged.join("\n"));
-
-    // ---- UI output ----
-    nonGeoList.textContent = nonGeotagged.length
-        ? nonGeotagged.join("\n")
-        : "All images are geotagged ✔";
-
-    geoPreview.textContent = JSON.stringify(geojson, null, 2);
-    downloadBtn.classList.remove("d-none");
-};
-
+// ===================== IMAGE → WEBP =====================
 function toWebP(file) {
     return new Promise(resolve => {
         const img = new Image();
@@ -97,23 +29,144 @@ function toWebP(file) {
             const canvas = document.createElement("canvas");
             canvas.width = img.width;
             canvas.height = img.height;
-            canvas.getContext("2d").drawImage(img, 0, 0);
-            canvas.toBlob(resolve, "image/webp", 0.9);
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+
+            // High quality, strong compression
+            canvas.toBlob(
+                blob => resolve(blob),
+                "image/webp",
+                0.8
+            );
         };
     });
 }
 
-downloadBtn.onclick = async () => {
-    const blob = await zip.generateAsync({ type: "blob" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "webp_with_geojson.zip";
-    a.click();
+// ===================== MAIN =====================
+convertBtn.onclick = async () => {
+    const files = [...fileInput.files];
+
+    if (!files.length) {
+        alert("Please select images or a directory");
+        return;
+    }
+
+    if (files.length > 5000) {
+        alert("Recommended max: 5000 images per batch");
+        return;
+    }
+
+    zip = new JSZip();
+    nonGeotagged = [];
+
+    geojson = {
+        type: "FeatureCollection",
+        features: []
+    };
+
+    progressBox.classList.remove("d-none");
+    downloadBtn.classList.add("d-none");
+    geojsonBtn.classList.add("d-none");
+
+    progressBar.style.width = "0%";
+    progressBar.innerText = "0%";
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Preserve directory structure
+        const relativePath =
+            file.webkitRelativePath || file.name;
+
+        const webpPath = relativePath.replace(/\.\w+$/, ".webp");
+
+        // ---------- EXIF ----------
+        let tags = {};
+        try {
+            tags = await ExifReader.load(file);
+        } catch {}
+
+        if (tags.GPSLatitude && tags.GPSLongitude) {
+            geojson.features.push({
+                type: "Feature",
+                geometry: {
+                    type: "Point",
+                    coordinates: [
+                        tags.GPSLongitude.description,
+                        tags.GPSLatitude.description
+                    ]
+                },
+                properties: {
+                    image: webpPath,
+                    latitude: tags.GPSLatitude.description,
+                    longitude: tags.GPSLongitude.description,
+                    altitude: tags.GPSAltitude?.description || null
+                }
+            });
+        } else {
+            nonGeotagged.push(relativePath);
+        }
+
+        // ---------- WEBP ----------
+        const webpBlob = await toWebP(file);
+        zip.file(webpPath, webpBlob);
+
+        // ---------- PROGRESS ----------
+        const percent = Math.round(((i + 1) / files.length) * 100);
+        progressBar.style.width = percent + "%";
+        progressBar.innerText = percent + "%";
+
+        if (i % 25 === 0) await sleep(0);
+    }
+
+    // ---------- EXTRA FILES ----------
+    zip.file("images.geojson", JSON.stringify(geojson, null, 2));
+    zip.file("non_geotagged.txt", nonGeotagged.join("\n"));
+
+    nonGeoList.textContent = nonGeotagged.length
+        ? nonGeotagged.join("\n")
+        : "All images are geotagged ✔";
+
+    geoPreview.textContent = JSON.stringify(geojson, null, 2);
+
+    downloadBtn.classList.remove("d-none");
+    geojsonBtn.classList.remove("d-none");
 };
 
+// ===================== ZIP DOWNLOAD =====================
+downloadBtn.onclick = async () => {
+    downloadBtn.disabled = true;
+    downloadBtn.innerText = "Creating ZIP...";
+
+    const blob = await zip.generateAsync(
+        { type: "blob", compression: "DEFLATE" },
+        meta => {
+            const p = Math.round(meta.percent);
+            progressBar.style.width = p + "%";
+            progressBar.innerText = "ZIP " + p + "%";
+        }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = "webp_with_geojson.zip";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+
+    downloadBtn.disabled = false;
+    downloadBtn.innerText = "Download WebP + GeoJSON (ZIP)";
+};
+
+// ===================== GEOJSON DOWNLOAD =====================
 geojsonBtn.onclick = () => {
-    if (!geojson || !geojson.features.length) {
-        alert("No geotagged images found.");
+    if (!geojson.features.length) {
+        alert("No geotagged images found");
         return;
     }
 
@@ -122,8 +175,14 @@ geojsonBtn.onclick = () => {
         { type: "application/geo+json" }
     );
 
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+
+    a.href = url;
     a.download = "images.geojson";
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
 };
