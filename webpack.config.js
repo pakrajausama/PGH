@@ -15,6 +15,7 @@ module.exports = (env, argv) => {
     entry: {
       main: './src/js/main.js',
       kmz: './src/js/kmz-tool.js',
+      webp: './src/js/webp.js',
     },
     output: {
       filename: '[name].bundle.js',

@@ -5,6 +5,38 @@ function dmsToDeg(dms, ref) {
   return (ref === "S" || ref === "W") ? -val : val;
 }
 
+
+async function convertToCompressedWebP(file, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      ctx.drawImage(img, 0, 0);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) reject("WebP conversion failed");
+          resolve(blob);
+        },
+        "image/webp",
+        quality
+      );
+    };
+
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+
 // --- Extract GPS from image using exif-js ---
 function extractGps(file, callback) {
   const reader = new FileReader();
@@ -99,8 +131,8 @@ document.getElementById("processBtn").addEventListener("click", async () => {
         if (gps) {
           try {
             // resize before adding
-            const smallBlob = await resizeImage(file, 1024, 0.7);
-            zip.file("files/" + file.name, smallBlob);
+            const webpBlob = await convertToCompressedWebP(file, 0.85);
+            zip.file("files/" + file.name.replace(/\.\w+$/, ".webp"), webpBlob);
 
             // Placemark
             kmlParts.push(`
@@ -134,3 +166,8 @@ document.getElementById("processBtn").addEventListener("click", async () => {
   link.textContent = "⬇️ Download KMZ";
   status.textContent = "✅ Done! KMZ with images is ready.";
 });
+
+
+
+
+
