@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoJSON → GeoTOON Converter</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin:auto; }
+  textarea { width: 100%; height: 200px; margin-top: 10px; font-family: monospace; }
+  input, button { margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h2>GeoJSON → GeoTOON Converter</h2>
+
+<input type="file" id="geojsonFile" accept=".geojson">
+<br>
+<button id="convertBtn">Convert to GeoTOON</button>
+<br>
+
+<label>GeoTOON Output:</label>
+<textarea id="geotoonOutput" readonly></textarea>
+<br>
+<button id="downloadBtn">Download GeoTOON</button>
+
+<script>
+function geojsonToGeoTOON(geojson) {
+    let features = geojson.features || [];
+    let lines = ["FC:"];
+    
+    for(let f of features) {
+        let geom = f.geometry;
+        let props = f.properties || {};
+        let propStr = Object.entries(props).map(([k,v])=>`${k}:${v}`).join(",");
+
+        if(geom.type === "Point") {
+            let [lon, lat] = geom.coordinates;
+            lines.push(`P(${lon},${lat}){${propStr}}`);
+        } else if(geom.type === "LineString") {
+            let coords = geom.coordinates.map(c => `(${c[0]},${c[1]})`).join("");
+            lines.push(`L(${coords}){${propStr}}`);
+        } else if(geom.type === "Polygon") {
+            // only first ring (outer)
+            let coords = geom.coordinates[0].map(c => `(${c[0]},${c[1]})`).join("");
+            lines.push(`G(${coords}){${propStr}}`);
+        }
+    }
+
+    return lines.join("\n");
+}
+
+// --- DOM elements ---
+const geojsonFile = document.getElementById("geojsonFile");
+const convertBtn = document.getElementById("convertBtn");
+const geotoonOutput = document.getElementById("geotoonOutput");
+const downloadBtn = document.getElementById("downloadBtn");
+
+convertBtn.addEventListener("click", () => {
+    const file = geojsonFile.files[0];
+    if(!file) { alert("Please select a GeoJSON file."); return; }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const geojson = JSON.parse(e.target.result);
+            const geotoon = geojsonToGeoTOON(geojson);
+            geotoonOutput.value = geotoon;
+        } catch(err) {
+            alert("Invalid GeoJSON file: " + err.message);
+        }
+    };
+    reader.readAsText(file);
+});
+
+downloadBtn.addEventListener("click", () => {
+    const blob = new Blob([geotoonOutput.value], {type:"text/plain"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "data.geotoon";
+    a.click();
+    URL.revokeObjectURL(url);
+});
+</script>
+
+</body>
+</html>
