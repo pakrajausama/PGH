@@ -244,19 +244,19 @@
 // }
 
 // Fetch total visitor count
-async function fetchVisitorCount() {
-  try {
-    const { count, error } = await supabase
-      .from('visitors')
-      .select('*', { count: 'exact', head: true });
+// async function fetchVisitorCount() {
+//   try {
+//     const { count, error } = await supabase
+//       .from('visitors')
+//       .select('*', { count: 'exact', head: true });
 
-    if (!error) {
-      setVisitorCount(count);
-    }
-  } catch (error) {
-    console.error('Error fetching visitor count:', error);
-  }
-}
+//     if (!error) {
+//       setVisitorCount(count);
+//     }
+//   } catch (error) {
+//     console.error('Error fetching visitor count:', error);
+//   }
+// }
 
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', function () {
