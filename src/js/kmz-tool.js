@@ -1,121 +1,54 @@
-// --- Utility: Convert DMS to decimal degrees ---
+// --- Convert DMS to decimal degrees ---
 function dmsToDeg(dms, ref) {
   const [deg, min, sec] = dms;
   let val = deg + min / 60 + sec / 3600;
   return (ref === "S" || ref === "W") ? -val : val;
 }
 
-
-async function convertToCompressedWebP(file, quality = 0.85) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-
-      const ctx = canvas.getContext("2d");
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-
-      ctx.drawImage(img, 0, 0);
-
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) reject("WebP conversion failed");
-          resolve(blob);
-        },
-        "image/webp",
-        quality
-      );
-    };
-
-    img.onerror = reject;
-    img.src = URL.createObjectURL(file);
-  });
+// --- Sanitize filename (allow only alphanumeric, underscore, dash, dot) ---
+function sanitizeFilename(name) {
+  return name.replace(/[^a-zA-Z0-9_.-]/g, '_');
 }
 
-
-// --- Extract GPS from image using exif-js ---
+// --- Extract GPS from image ---
 function extractGps(file, callback) {
   const reader = new FileReader();
   reader.onload = function (e) {
     try {
       const exif = EXIF.readFromBinaryFile(e.target.result);
-
       if (exif && exif.GPSLatitude && exif.GPSLongitude) {
         const lat = dmsToDeg(exif.GPSLatitude, exif.GPSLatitudeRef);
         const lon = dmsToDeg(exif.GPSLongitude, exif.GPSLongitudeRef);
         callback({ lat, lon });
       } else {
-        console.warn("No GPS in:", file.name);
         callback(null);
       }
     } catch (err) {
-      console.warn("EXIF parse error for:", file.name, err.message || err);
+      console.warn(`Failed to read EXIF from ${file.name}:`, err);
       callback(null);
     }
-  };
-  reader.onerror = function (err) {
-    console.error("File read error:", file.name, err);
-    callback(null);
   };
   reader.readAsArrayBuffer(file);
 }
 
-// --- Resize image (like Python Pillow did) ---
-async function resizeImage(file, maxSize = 1024, quality = 0.7) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      let { width, height } = img;
-
-      // scale down
-      if (width > height) {
-        if (width > maxSize) {
-          height *= maxSize / width;
-          width = maxSize;
-        }
-      } else {
-        if (height > maxSize) {
-          width *= maxSize / height;
-          height = maxSize;
-        }
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(
-        (blob) => resolve(blob),
-        "image/jpeg",
-        quality
-      );
-    };
-    img.onerror = reject;
-    img.src = URL.createObjectURL(file);
-  });
-}
-
-// --- Build KMZ ---
+// --- MAIN ---
 document.getElementById("processBtn").addEventListener("click", async () => {
   const files = document.getElementById("fileInput").files;
   const status = document.getElementById("status");
   const link = document.getElementById("downloadLink");
+  const skippedList = document.getElementById("skippedList");
 
   if (!files.length) {
-    alert("Please select JPG images first");
+    alert("Select images first");
     return;
   }
 
-  status.textContent = "⏳ Processing images...";
+  status.textContent = "⏳ Processing...";
   link.style.display = "none";
+  skippedList.innerHTML = "";
 
   const zip = new JSZip();
+
   const kmlParts = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<kml xmlns="http://www.opengis.net/kml/2.2">',
@@ -123,51 +56,66 @@ document.getElementById("processBtn").addEventListener("click", async () => {
   ];
 
   let processed = 0;
+  let skippedCount = 0;
 
   for (const file of files) {
     await new Promise((resolve) => {
-      extractGps(file, async (gps) => {
+      extractGps(file, (gps) => {
         processed++;
-        if (gps) {
-          try {
-            // resize before adding
-            const webpBlob = await convertToCompressedWebP(file, 0.85);
-            zip.file("files/" + file.name.replace(/\.\w+$/, ".webp"), webpBlob);
 
-            // Placemark
-            kmlParts.push(`
-              <Placemark>
-                <name>${file.name}</name>
-                <description><![CDATA[
-                  <img src="files/${encodeURIComponent(file.name)}" width="400"/>
-                ]]></description>
-                <Point><coordinates>${gps.lon},${gps.lat}</coordinates></Point>
-              </Placemark>
-            `);
-          } catch (err) {
-            console.error("Resize failed for", file.name, err);
-          }
+        if (gps) {
+          // Create a clean, safe filename
+          const safeName = sanitizeFilename(file.name);
+          // Store image inside 'files/' folder (not 'images/' to avoid confusion)
+          zip.file(`files/${safeName}`, file);
+
+          // Add Placemark with correct image reference
+          kmlParts.push(`
+            <Placemark>
+              <name>${safeName}</name>
+              <description><![CDATA[
+                <div>
+                  <img src="files/${safeName}" style="max-width:300px;"/>
+                  <br/>
+                  <b>Lat:</b> ${gps.lat.toFixed(6)}<br/>
+                  <b>Lon:</b> ${gps.lon.toFixed(6)}
+                </div>
+              ]]></description>
+              <Point>
+                <coordinates>${gps.lon},${gps.lat},0</coordinates>
+              </Point>
+            </Placemark>
+          `);
+        } else {
+          skippedCount++;
+          const li = document.createElement("li");
+          li.textContent = file.name;
+          skippedList.appendChild(li);
         }
-        status.textContent = `Processed ${processed}/${files.length} files...`;
+
+        status.textContent = `Processed ${processed}/${files.length} (skipped ${skippedCount})`;
         resolve();
       });
     });
   }
 
   kmlParts.push("</Document></kml>");
-  zip.file("doc.kml", kmlParts.join("\n"));
 
+  // Use a unique KML name to avoid any caching issues
+  const kmlName = `doc_${Date.now()}.kml`;
+  zip.file(kmlName, kmlParts.join("\n"));
+
+  // Generate KMZ
   const kmzBlob = await zip.generateAsync({ type: "blob" });
   const url = URL.createObjectURL(kmzBlob);
 
   link.href = url;
-  link.download = "geotagged_images.kmz";
+  link.download = `geotagged_${Date.now()}.kmz`;  // unique filename
   link.style.display = "inline-block";
   link.textContent = "⬇️ Download KMZ";
-  status.textContent = "✅ Done! KMZ with images is ready.";
+
+  status.textContent = "✅ Done! KMZ ready (images included)";
+
+  // Debug: log the first few lines of the KML to console
+  console.log("Generated KML preview:\n", kmlParts.slice(0, 10).join("\n"));
 });
-
-
-
-
-
